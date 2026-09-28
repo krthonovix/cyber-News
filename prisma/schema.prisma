@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  username     String     @unique
+  email        String     @unique
+  passwordHash String
+  role         String     @default("ANALYST") // ANALYST | ADMIN | RESEARCHER
+  avatarColor  String     @default("#10b981")
+  createdAt    DateTime   @default(now())
+  posts        Post[]
+  comments     Comment[]
+  votes        Vote[]
+  bookmarks    Bookmark[]
+}
+
+model FeedSource {
+  id            String    @id @default(cuid())
+  name          String
+  url           String    @unique
+  siteUrl       String
+  language      String    @default("EN") // EN | ES
+  category      String    @default("General")
+  enabled       Boolean   @default(true)
+  lastFetchedAt DateTime?
+  createdAt     DateTime  @default(now())
+  posts         Post[]
+}
+
+model Post {
+  id          String      @id @default(cuid())
+  title       String
+  url         String?     @unique
+  imageUrl    String?
+  summary     String
+  content     String?
+  authorName  String      @default("System")
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sourceId    String?
+  source      FeedSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  postType    String      @default("NEWS") // NEWS | DISCUSSION
+  language    String      @default("EN")   // EN | ES
+  severity    String      @default("INFO") // CRITICAL | HIGH | MEDIUM | INFO
+  cveIds      String      @default("[]")   // JSON string array of CVE-YYYY-NNNN
+  tags        String      @default("[]")   // JSON string array of category tags
+  score       Int         @default(1)
+  publishedAt DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  comments    Comment[]
+  votes       Vote[]
+  bookmarks   Bookmark[]
+}
+
+model Comment {
+  id         String    @id @default(cuid())
+  postId     String
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorName String
+  authorRole String    @default("ANALYST")
+  parentId   String?
+  parent     Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
+  content    String
+  score      Int       @default(1)
+  createdAt  DateTime  @default(now())
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  value     Int      @default(1) // 1 for upvote, -1 for downvote
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+}
